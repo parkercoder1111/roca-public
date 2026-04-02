@@ -1,0 +1,9 @@
+{
+  "name": "ROCA",
+  "short_name": "ROCA",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F2F2F7",
+  "theme_color": "#F2F2F7",
+  "description": "Remote control for ROCA"
+}

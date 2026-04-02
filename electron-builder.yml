@@ -1,0 +1,25 @@
+appId: com.roca.app
+productName: ROCA
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist/**/*
+  - build/icon.png
+  - node_modules/**/*
+  - package.json
+mac:
+  icon: build/icon.icns
+  category: public.app-category.productivity
+  target: dir
+  identity: "ROCA Dev"
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  hardenedRuntime: false
+  gatekeeperAssess: false
+extraResources:
+  - from: dist/mobile/
+    to: mobile/
+  - from: roca/
+    to: roca/
+asar: false
