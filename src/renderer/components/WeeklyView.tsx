@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react'
+import React, { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react'
 import TaskList from './TaskList'
 import type { Task, Folder, Week } from '@shared/types'
 import { currentIsoWeek, isoWeeksInYear } from '../lib/formatDate'
+import { SOURCE_COLORS, SOURCE_LABELS_FULL } from '../lib/sourceMeta'
 
 interface Props {
   week: string
@@ -47,16 +48,20 @@ const noopNumStr = (_id: number, _s: string) => {}
 const noopNumNull = (_id: number, _fid: number | null) => {}
 const noopArr = (_ids: number[]) => {}
 
-// Source filter configs matching the Flask app
-const SOURCE_FILTERS: { key: string | null; label: string; activeClass: string }[] = [
-  { key: null, label: 'All', activeClass: 'bg-black/[0.06] text-text-1' },
-  { key: 'crm', label: 'CRM', activeClass: 'bg-blue-2 text-blue-1' },
-  { key: 'voice_notes', label: 'Voice Notes', activeClass: 'bg-emerald-400/10 text-emerald-400' },
-  { key: 'meeting_notes', label: 'Meeting Notes', activeClass: 'bg-purple-2 text-purple-1' },
-  { key: 'google_tasks', label: 'Google Tasks', activeClass: 'bg-black/[0.06] text-text-2' },
-  { key: 'recurring', label: 'Recurring', activeClass: 'bg-amber-400/10 text-amber-400' },
-  { key: 'manual', label: 'Manual', activeClass: 'bg-black/[0.06] text-text-2' },
-]
+// Source filter — dynamically built from tasks that actually exist
+function buildSourceFilters(tasks: Task[]): { key: string | null; label: string; activeClass: string }[] {
+  const sources = new Set(tasks.map(t => t.source))
+  const filters: { key: string | null; label: string; activeClass: string }[] = [
+    { key: null, label: 'All', activeClass: 'bg-black/[0.06] text-text-1' },
+  ]
+  for (const source of sources) {
+    if (source === 'manual') continue // manual is the default, no need for a filter
+    const label = SOURCE_LABELS_FULL[source] || source
+    const color = SOURCE_COLORS[source] || 'bg-black/[0.06] text-text-2'
+    filters.push({ key: source, label, activeClass: color })
+  }
+  return filters
+}
 
 
 
@@ -160,6 +165,7 @@ export default function WeeklyView({
   }
 
   const totalOpen = objectives.length
+  const sourceFilters = useMemo(() => buildSourceFilters([...objectives, ...results]), [objectives, results])
 
   return (
     <div className="w-full h-full shrink-0 border-r border-black/[0.06] overflow-y-auto">
@@ -281,13 +287,13 @@ export default function WeeklyView({
         {/* Filters */}
         <div role="radiogroup" aria-label="Filter tasks by source" className="relative flex gap-1 mb-5 text-[10px] flex-nowrap overflow-x-auto scrollbar-hide after:pointer-events-none after:absolute after:right-0 after:top-0 after:bottom-0 after:w-6 after:bg-gradient-to-l after:from-surface-0 after:to-transparent"
           onKeyDown={(e) => {
-            const keys = SOURCE_FILTERS.map(f => f.key)
+            const keys = sourceFilters.map(f => f.key)
             const idx = keys.indexOf(sourceFilter)
             if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); onSetSourceFilter(keys[(idx + 1) % keys.length]) }
             if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); onSetSourceFilter(keys[(idx - 1 + keys.length) % keys.length]) }
           }}
         >
-          {SOURCE_FILTERS.map(({ key, label, activeClass }) => (
+          {sourceFilters.map(({ key, label, activeClass }) => (
             <button
               key={label}
               role="radio"
