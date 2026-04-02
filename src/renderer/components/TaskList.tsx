@@ -319,9 +319,9 @@ export default function TaskList({
                     <span className="text-[10px] text-text-3/60 block truncate mt-0.5">{task.company_name}</span>
                   )}
                 </div>
-                {task.source === 'clarify' && task.source_id && window.__CLARIFY_BASE_URL && (
+                {task.source === 'crm' && task.source_id && window.__CRM_BASE_URL && (
                   <a
-                    href={`${window.__CLARIFY_BASE_URL}/objects/task/records/${task.source_id}`}
+                    href={`${window.__CRM_BASE_URL}/objects/task/records/${task.source_id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md text-text-3/50 hover:text-text-2 transition-colors"

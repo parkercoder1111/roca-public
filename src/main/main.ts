@@ -71,11 +71,11 @@ import {
 } from './database'
 import {
   syncAll,
-  pushTaskToClarify,
+  pushTaskToCRM,
   pushTaskToGoogleTasks,
   reconcileAll,
   processTranscript,
-  syncKrisp,
+  syncVoiceNotes,
 } from './sync'
 import { PtyManager } from './ptyManager'
 import { BrowserManager } from './browserManager'
@@ -87,7 +87,7 @@ import {
 } from './database'
 import {
   enrichAndAnalyze,
-  enrichFromClarify,
+  enrichFromCRM,
   refineOutput,
   executePlan,
   learnFromFeedback,
@@ -324,8 +324,8 @@ async function runOrganize(week: string, dryRun: boolean): Promise<any> {
   const prompt = `You are a task deduplicator. Below are active tasks from a productivity app called ROCA. Sources:
 - manual: user-created tasks (most intentional -- preserve these)
 - crm: CRM tasks
-- krisp: AI-extracted action items from Krisp meeting transcripts
-- granola: AI-extracted action items from Granola meeting transcripts
+- voice_notes: AI-extracted action items from voice note transcripts
+- meeting_notes: AI-extracted action items from meeting note transcripts
 - organized: previously organized tasks
 - google_tasks, recurring: other synced sources
 
@@ -353,7 +353,7 @@ OUTPUT FORMAT -- respond with ONLY a JSON object:
 
 RULES:
 1. CLOSE a task only if it's clearly a duplicate of another open task (same intent, different wording)
-2. When closing a duplicate, prefer keeping: manual > clarify > transcript > krisp > organized
+2. When closing a duplicate, prefer keeping: manual > crm > transcript > voice_notes > organized
 3. Rename only if the title is genuinely unclear -- don't rename for style
 4. Do NOT create new tasks -- only keep or close existing ones
 5. If tasks look fine, return an empty actions array
@@ -619,7 +619,7 @@ function buildTaskContext(task: any, taskId: number, enrichmentSummary?: string)
     md += `\n`
   }
 
-  // Clarify enrichment (company, person, deal, meetings from CRM)
+  // CRM enrichment (company, person, deal, meetings from CRM)
   if (enrichmentSummary) {
     md += `## CRM Context\n\n${enrichmentSummary}\n\n---\n\n`
   }
@@ -705,7 +705,7 @@ function buildAssistantContext(): string {
 function registerIpcHandlers(): void {
   // ── Environment ──
   ipcMain.handle('env:get', (_, key: string) => {
-    const allowed = ['ELEVENLABS_API_KEY', 'CLARIFY_APP_URL']
+    const allowed = ['ELEVENLABS_API_KEY', 'CRM_APP_URL']
     return allowed.includes(key) ? process.env[key] || null : null
   })
 
@@ -815,8 +815,8 @@ function registerIpcHandlers(): void {
   ipcMain.handle('db:tasks:toggle', async (_, taskId: number) => {
     const task = toggleTask(taskId)
     if (task) {
-      if (task.source === 'clarify' && task.source_id) {
-        pushTaskToClarify(task.source_id, task.status).catch(console.error)
+      if (task.source === 'crm' && task.source_id) {
+        pushTaskToCRM(task.source_id, task.status).catch(console.error)
       } else if (task.source === 'google_tasks' && task.source_id) {
         pushTaskToGoogleTasks(task.source_id, task.status).catch(console.error)
       }
@@ -1357,13 +1357,13 @@ function registerIpcHandlers(): void {
     }
   })
 
-  // ── Krisp webhook data (ingest from external source) ──
-  ipcMain.handle('webhook:krisp', async (_, payload: any) => {
-    // Write to krisp-staging.json and sync — use ROCA's own data dir
-    const stateDir = process.env.KRISP_STATE_DIR || app.getPath('userData')
+  // ── Voice notes webhook data (ingest from external source) ──
+  ipcMain.handle('webhook:voice-notes', async (_, payload: any) => {
+    // Write to voice-notes-staging.json and sync — use ROCA's own data dir
+    const stateDir = process.env.VOICE_NOTES_STATE_DIR || app.getPath('userData')
     if (!fs.existsSync(stateDir)) fs.mkdirSync(stateDir, { recursive: true })
 
-    const stagingPath = path.join(stateDir, 'krisp-staging.json')
+    const stagingPath = path.join(stateDir, 'voice-notes-staging.json')
     let staging: any = { fetched_at: '', total_pending: 0, meetings: {} }
     if (fs.existsSync(stagingPath)) {
       try { staging = JSON.parse(fs.readFileSync(stagingPath, 'utf-8')) } catch { /* ignore */ }
@@ -1408,14 +1408,14 @@ function registerIpcHandlers(): void {
       fs.writeFileSync(stagingPath, JSON.stringify(staging, null, 2))
     }
 
-    // Sync krisp + transcript (pass the staging path we just wrote to)
-    const count = syncKrisp(stagingPath)
+    // Sync voice notes + transcript (pass the staging path we just wrote to)
+    const count = syncVoiceNotes(stagingPath)
     const transcriptText = payload.transcript || payload.transcription ||
       (payload.data && typeof payload.data === 'object' ? (payload.data.transcript || payload.data.transcription || '') : '')
 
     let transcriptCount = 0
     if (transcriptText) {
-      transcriptCount = await processTranscript(meetingId, meetingName, transcriptText, meetingDate, 'krisp')
+      transcriptCount = await processTranscript(meetingId, meetingName, transcriptText, meetingDate, 'voice_notes')
     }
 
     return {
@@ -1423,7 +1423,7 @@ function registerIpcHandlers(): void {
       meeting_id: meetingId,
       items: rawItems.length,
       has_transcript: !!transcriptText,
-      krisp_created: count,
+      voice_notes_created: count,
       transcript_created: transcriptCount,
     }
   })
@@ -1457,15 +1457,15 @@ function registerIpcHandlers(): void {
           // Write basic context immediately (no API delay)
           const md = buildTaskContext(task, numericId)
           fs.writeFileSync(contextPath, md)
-          // Enrich from Clarify in background — shell takes ~3-5s to init,
+          // Enrich from CRM in background — shell takes ~3-5s to init,
           // so the file will be updated before `cat` runs
-          enrichFromClarify(task).then(enrichment => {
+          enrichFromCRM(task).then(enrichment => {
             if (enrichment.summary) {
               const enrichedMd = buildTaskContext(task, numericId, enrichment.summary)
               fs.writeFileSync(contextPath!, enrichedMd)
             }
           }).catch(e => {
-            console.error('[pty] Clarify enrichment failed (basic context still available):', e)
+            console.error('[pty] CRM enrichment failed (basic context still available):', e)
           })
         }
       } catch (e) {
@@ -1821,13 +1821,13 @@ function registerIpcHandlers(): void {
       const contextDir = path.join(app.getPath('userData'), 'task-contexts')
       if (!fs.existsSync(contextDir)) fs.mkdirSync(contextDir, { recursive: true })
 
-      // Enrich from Clarify
+      // Enrich from CRM
       let enrichmentSummary: string | undefined
       try {
-        const enrichment = await enrichFromClarify(task)
+        const enrichment = await enrichFromCRM(task)
         if (enrichment.summary) enrichmentSummary = enrichment.summary
       } catch (e) {
-        console.error('[task-context] Clarify enrichment failed:', e)
+        console.error('[task-context] CRM enrichment failed:', e)
       }
 
       let md = buildTaskContext(task, taskId, enrichmentSummary)
@@ -2225,25 +2225,25 @@ function startRemoteServer(): void {
     port: remoteServer.getPort(),
   }))
 
-  // ── Krisp webhook (HTTP endpoint for external Krisp callbacks) ──
-  remoteServer.webhook('krisp', async (payload: any) => {
+  // ── Voice notes webhook (HTTP endpoint for external voice note callbacks) ──
+  remoteServer.webhook('voice-notes', async (payload: any) => {
     // Reuse the same IPC handler logic
-    const stateDir = process.env.KRISP_STATE_DIR || app.getPath('userData')
+    const stateDir = process.env.VOICE_NOTES_STATE_DIR || app.getPath('userData')
     if (!fs.existsSync(stateDir)) fs.mkdirSync(stateDir, { recursive: true })
 
     // Log to webhook log file
-    const logPath = process.env.KRISP_WEBHOOK_LOG ||
-      path.join(app.getPath('userData'), 'krisp-webhook-log.jsonl')
+    const logPath = process.env.VOICE_NOTES_WEBHOOK_LOG ||
+      path.join(app.getPath('userData'), 'voice-notes-webhook-log.jsonl')
     try {
       const logDir = path.dirname(logPath)
       if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true })
       const entry = JSON.stringify({ received_at: new Date().toISOString(), payload }) + '\n'
       fs.appendFileSync(logPath, entry)
     } catch (e) {
-      console.error('[webhook:krisp] Log write error:', e)
+      console.error('[webhook:voice-notes] Log write error:', e)
     }
 
-    // Extract meeting data from Krisp webhook format
+    // Extract meeting data from voice notes webhook format
     const data = payload.data || {}
     const meeting = data.meeting || {}
     const meetingId = meeting.id || payload.meeting_id || payload.meetingId || ''
@@ -2258,13 +2258,13 @@ function startRemoteServer(): void {
       transcript = data.content.map((c: any) => `${c.speaker || 'Speaker'}: ${c.text || ''}`).join('\n')
     }
     if (transcript && meetingId) {
-      transcriptCount = await processTranscript(meetingId, meetingName, transcript, meetingDate, 'krisp')
+      transcriptCount = await processTranscript(meetingId, meetingName, transcript, meetingDate, 'voice_notes')
     }
 
     // Also handle structured action items if present
     let rawItems = payload.action_items || payload.actionItems || data.action_items || data.actionItems || []
-    const stagingPath = path.join(stateDir, 'krisp-staging.json')
-    let krispCount = 0
+    const stagingPath = path.join(stateDir, 'voice-notes-staging.json')
+    let voiceNotesCount = 0
     if (meetingId && rawItems.length > 0) {
       let staging: any = { fetched_at: '', total_pending: 0, meetings: {} }
       if (fs.existsSync(stagingPath)) {
@@ -2285,7 +2285,7 @@ function startRemoteServer(): void {
         (sum: number, m: any) => sum + (m.action_items || []).filter((ai: any) => !ai.completed).length, 0
       )
       fs.writeFileSync(stagingPath, JSON.stringify(staging, null, 2))
-      krispCount = syncKrisp(stagingPath)
+      voiceNotesCount = syncVoiceNotes(stagingPath)
     }
 
     return {
@@ -2293,9 +2293,9 @@ function startRemoteServer(): void {
       meeting_id: meetingId,
       has_transcript: !!transcript,
       transcript_created: transcriptCount,
-      krisp_created: krispCount,
+      voice_notes_created: voiceNotesCount,
     }
-  }, process.env.KRISP_WEBHOOK_SECRET)
+  }, process.env.VOICE_NOTES_WEBHOOK_SECRET)
 
   // Expose specific env vars to mobile (for ElevenLabs voice mode)
   const ALLOWED_REMOTE_ENV = ['ELEVENLABS_API_KEY']

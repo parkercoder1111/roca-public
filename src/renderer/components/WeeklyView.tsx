@@ -50,9 +50,9 @@ const noopArr = (_ids: number[]) => {}
 // Source filter configs matching the Flask app
 const SOURCE_FILTERS: { key: string | null; label: string; activeClass: string }[] = [
   { key: null, label: 'All', activeClass: 'bg-black/[0.06] text-text-1' },
-  { key: 'clarify', label: 'Clarify', activeClass: 'bg-blue-2 text-blue-1' },
-  { key: 'krisp', label: 'Krisp', activeClass: 'bg-emerald-400/10 text-emerald-400' },
-  { key: 'granola', label: 'Granola', activeClass: 'bg-purple-2 text-purple-1' },
+  { key: 'crm', label: 'CRM', activeClass: 'bg-blue-2 text-blue-1' },
+  { key: 'voice_notes', label: 'Voice Notes', activeClass: 'bg-emerald-400/10 text-emerald-400' },
+  { key: 'meeting_notes', label: 'Meeting Notes', activeClass: 'bg-purple-2 text-purple-1' },
   { key: 'google_tasks', label: 'Google Tasks', activeClass: 'bg-black/[0.06] text-text-2' },
   { key: 'recurring', label: 'Recurring', activeClass: 'bg-amber-400/10 text-amber-400' },
   { key: 'manual', label: 'Manual', activeClass: 'bg-black/[0.06] text-text-2' },

@@ -367,7 +367,7 @@ export default function TaskDetail({
     onPriorityChange(task.id, next)
   }
 
-  const isUntriaged = !task.triaged_at && ['clarify', 'google_tasks', 'krisp', 'transcript', 'granola'].includes(task.source)
+  const isUntriaged = !task.triaged_at && ['crm', 'google_tasks', 'voice_notes', 'transcript', 'meeting_notes'].includes(task.source)
   const uploadIsError = !!uploadStatus && (uploadStatus.startsWith('Paste failed') || uploadStatus.startsWith('No image') || uploadStatus.startsWith('Upload failed'))
   const uploadIsSuccess = !!uploadStatus && (uploadStatus.startsWith('Attached') || uploadStatus.includes('uploaded'))
 
@@ -471,9 +471,9 @@ export default function TaskDetail({
 
         {/* Action buttons */}
         <div className="flex flex-wrap items-center gap-2 mt-3">
-          {task.source === 'clarify' && task.source_id && window.__CLARIFY_BASE_URL && (
+          {task.source === 'crm' && task.source_id && window.__CRM_BASE_URL && (
             <a
-              href={`${window.__CLARIFY_BASE_URL}/objects/task/records/${task.source_id}`}
+              href={`${window.__CRM_BASE_URL}/objects/task/records/${task.source_id}`}
               target="_blank"
               rel="noopener noreferrer"
               className={`${BTN} bg-black/[0.04] text-text-2 hover:bg-black/[0.08]`}

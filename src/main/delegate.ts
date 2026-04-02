@@ -1,12 +1,12 @@
 /**
  * Smart delegation engine — spawns Claude headless sessions (Slack Bot pattern)
- * that pull full Clarify context, analyze tasks, and return concrete
+ * that pull full CRM context, analyze tasks, and return concrete
  * execution plans with actual generated output.
  *
  * Ported from roca/delegate.py for the Electron app.
  *
  * Flow:
- * 1. Enrich: Fetch task + company + person + deal + meetings from Clarify REST API
+ * 1. Enrich: Fetch task + company + person + deal + meetings from CRM REST API
  * 2. Build prompt: Assemble rich context + roca-prompt.md + journal.md + skills + playbooks
  * 3. Run Claude: Spawn `claude -p` headless (same as Slack Bot workflow)
  * 4. Return: Structured plan + actual artifacts (email drafts, SQL, memos, etc.)
@@ -32,10 +32,10 @@ import type { ClaudeRunResult } from './toolExecutor'
 //  CONFIG
 // ═══════════════════════════════════════════
 
-const CLARIFY_API_KEY = process.env.CLARIFY_API_KEY || ''
-const CLARIFY_BASE = process.env.CLARIFY_API_BASE || ''
-const CLARIFY_HEADERS: Record<string, string> = CLARIFY_API_KEY
-  ? { Authorization: `api-key ${CLARIFY_API_KEY}` }
+const CRM_API_KEY = process.env.CRM_API_KEY || ''
+const CRM_API_BASE = process.env.CRM_API_BASE || ''
+const CRM_HEADERS: Record<string, string> = CRM_API_KEY
+  ? { Authorization: `api-key ${CRM_API_KEY}` }
   : {}
 
 // ═══════════════════════════════════════════
@@ -373,15 +373,15 @@ function classifyAndPullPlaybook(
 }
 
 // ═══════════════════════════════════════════
-//  CLARIFY API HELPERS
+//  CRM API HELPERS
 // ═══════════════════════════════════════════
 
-/** GET from Clarify API, return data dict or null. */
+/** GET from CRM API, return data dict or null. */
 async function apiGet(urlPath: string): Promise<any | null> {
-  if (!CLARIFY_API_KEY) return null
+  if (!CRM_API_KEY) return null
   try {
-    const resp = await fetch(`${CLARIFY_BASE}/${urlPath}`, {
-      headers: CLARIFY_HEADERS,
+    const resp = await fetch(`${CRM_API_BASE}/${urlPath}`, {
+      headers: CRM_HEADERS,
       signal: AbortSignal.timeout(10000),
     })
     if (!resp.ok) return null
@@ -419,7 +419,7 @@ async function fetchRelated(
 async function fetchMeetingsByEmail(
   emails: string[]
 ): Promise<Array<{ subject: string; start: string; ai_summary: string; notes: string }>> {
-  if (!emails.length || !CLARIFY_API_KEY) return []
+  if (!emails.length || !CRM_API_KEY) return []
 
   const meetings: Array<{ subject: string; start: string; ai_summary: string; notes: string }> = []
   const seenIds = new Set<string>()
@@ -427,12 +427,12 @@ async function fetchMeetingsByEmail(
   for (const email of emails.slice(0, 2)) {
     try {
       const encodedEmail = encodeURIComponent(email)
-      const url = `${CLARIFY_BASE}/objects/meeting/resources`
+      const url = `${CRM_API_BASE}/objects/meeting/resources`
         + `?filter%5Bparticipants%5D%5BContains%5D=${encodedEmail}`
         + `&page%5Blimit%5D=5`
 
       const resp = await fetch(url, {
-        headers: CLARIFY_HEADERS,
+        headers: CRM_HEADERS,
         signal: AbortSignal.timeout(15000),
       })
       if (!resp.ok) {
@@ -463,12 +463,12 @@ async function fetchMeetingsByEmail(
   return meetings.slice(0, 3)
 }
 
-/** Fetch meeting transcripts via Clarify REST API. */
-async function fetchClarifyMeetingTranscripts(
+/** Fetch meeting transcripts via CRM REST API. */
+async function fetchCrmMeetingTranscripts(
   meetings: Array<{ subject: string; start: string; ai_summary: string; notes: string }>,
   maxTranscripts = 2
 ): Promise<Array<{ meeting_subject: string; transcript_text: string }>> {
-  if (!meetings.length || !CLARIFY_API_KEY) return []
+  if (!meetings.length || !CRM_API_KEY) return []
 
   const transcripts: Array<{ meeting_subject: string; transcript_text: string }> = []
 
@@ -484,7 +484,7 @@ async function fetchClarifyMeetingTranscripts(
 //  DATA EXTRACTION HELPERS
 // ═══════════════════════════════════════════
 
-/** Extract plain text from Clarify block-based description. */
+/** Extract plain text from CRM block-based description. */
 function extractDescription(desc: any): string {
   if (!desc) return ''
   const textBlocks = desc.text
@@ -516,7 +516,7 @@ function extractBlock(block: any, lines: string[], depth: number): void {
   }
 }
 
-/** Extract first item from Clarify JSONB {"items": [...]}. */
+/** Extract first item from CRM JSONB {"items": [...]}. */
 function jsonbFirst(val: any): string | null {
   if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
     const items = val.items
@@ -525,7 +525,7 @@ function jsonbFirst(val: any): string | null {
   return val ?? null
 }
 
-/** Format Clarify name JSONB. */
+/** Format CRM name JSONB. */
 function formatName(nameVal: any): string {
   if (typeof nameVal === 'object' && nameVal !== null) {
     const first = nameVal.first_name ?? ''
@@ -535,7 +535,7 @@ function formatName(nameVal: any): string {
   return nameVal ? String(nameVal) : 'Unknown'
 }
 
-/** Extract emails from Clarify email_addresses JSONB. */
+/** Extract emails from CRM email_addresses JSONB. */
 function extractEmails(emailVal: any): string[] {
   if (typeof emailVal !== 'object' || emailVal === null) return []
   const items = emailVal.items
@@ -550,7 +550,7 @@ function extractEmails(emailVal: any): string[] {
     .filter((e: string) => e.length > 0)
 }
 
-/** Extract phone numbers from Clarify phone_numbers JSONB. */
+/** Extract phone numbers from CRM phone_numbers JSONB. */
 function extractPhones(phoneVal: any): string[] {
   if (typeof phoneVal !== 'object' || phoneVal === null) return []
   const items = phoneVal.items
@@ -578,8 +578,8 @@ export interface EnrichmentResult {
   summary: string
 }
 
-/** Pull full context from Clarify for this task. */
-export async function enrichFromClarify(task: any): Promise<EnrichmentResult> {
+/** Pull full context from CRM for this task. */
+export async function enrichFromCRM(task: any): Promise<EnrichmentResult> {
   const result: EnrichmentResult = {
     task: null,
     company: null,
@@ -589,8 +589,8 @@ export async function enrichFromClarify(task: any): Promise<EnrichmentResult> {
     summary: '',
   }
 
-  if (task.source !== 'clarify' || !task.source_id) {
-    result.summary = `## Task: ${task.title}\nSource: ${task.source} (no Clarify link)`
+  if (task.source !== 'crm' || !task.source_id) {
+    result.summary = `## Task: ${task.title}\nSource: ${task.source} (no CRM link)`
     if (task.notes) {
       // Resolve relative /uploads/ paths to absolute so Claude can read attached files
       const uploadsDir = getUploadDir()
@@ -603,15 +603,15 @@ export async function enrichFromClarify(task: any): Promise<EnrichmentResult> {
     return result
   }
 
-  const clarifyTask = await apiGet(`objects/task/records/${task.source_id}`)
-  if (!clarifyTask) {
-    result.summary = `## Task: ${task.title}\n(Could not fetch from Clarify)`
+  const crmTask = await apiGet(`objects/task/records/${task.source_id}`)
+  if (!crmTask) {
+    result.summary = `## Task: ${task.title}\n(Could not fetch from CRM)`
     return result
   }
 
-  result.task = clarifyTask
-  const attrs = clarifyTask.attributes ?? {}
-  const rels = clarifyTask.relationships ?? {}
+  result.task = crmTask
+  const attrs = crmTask.attributes ?? {}
+  const rels = crmTask.relationships ?? {}
 
   const description = extractDescription(attrs.description)
 
@@ -639,15 +639,15 @@ export async function enrichFromClarify(task: any): Promise<EnrichmentResult> {
   }
   result.meetings = meetings
 
-  // Build transcript excerpts from Clarify API (memsearch excluded in TS port)
+  // Build transcript excerpts from CRM API (memsearch excluded in TS port)
   let transcriptExcerpts: Array<{ content: string; heading: string; source: string }> = []
 
-  // Try Clarify API for meeting transcripts
+  // Try CRM API for meeting transcripts
   if (meetings.length > 0) {
     // Fetch transcript data for meetings that have recordings
     // This requires meeting IDs which we get from the raw API response
     // For now, transcript support is via the meeting summaries in the enrichment
-    // Full transcript download requires the meeting ID from the Clarify resource
+    // Full transcript download requires the meeting ID from the CRM resource
   }
 
   result.summary = buildSummary({
@@ -693,7 +693,7 @@ function buildSummary(args: BuildSummaryArgs): string {
   } = args
 
   const parts: string[] = [`## Task: ${title}`]
-  if (CLARIFY_BASE) parts.push(`CRM: ${CLARIFY_BASE.replace('/v1/', '/').replace('api.', 'app.')}/objects/task/records/${taskId}`)
+  if (CRM_API_BASE) parts.push(`CRM: ${CRM_API_BASE.replace('/v1/', '/').replace('api.', 'app.')}/objects/task/records/${taskId}`)
 
   if (priority === 'Urgent' || priority === 'High') {
     parts.push(`**Priority**: ${priority}`)
@@ -719,7 +719,7 @@ function buildSummary(args: BuildSummaryArgs): string {
     const prospectStage = jsonbFirst(company.prospect_stage)
 
     parts.push(`\n### Company: ${name}`)
-    if (CLARIFY_BASE) parts.push(`Link: ${CLARIFY_BASE.replace('/v1/', '/').replace('api.', 'app.')}/objects/company/records/${cid}`)
+    if (CRM_API_BASE) parts.push(`Link: ${CRM_API_BASE.replace('/v1/', '/').replace('api.', 'app.')}/objects/company/records/${cid}`)
     if (tier) parts.push(`Tier: ${tier}`)
     if (saasType) parts.push(`SaaS Type: ${saasType}`)
     if (domain) parts.push(`Domain: ${domain}`)
@@ -750,7 +750,7 @@ function buildSummary(args: BuildSummaryArgs): string {
     const contactStatus = jsonbFirst(person.contact_status)
 
     parts.push(`\n### Person: ${pname}`)
-    if (CLARIFY_BASE) parts.push(`Link: ${CLARIFY_BASE.replace('/v1/', '/').replace('api.', 'app.')}/objects/person/records/${pid}`)
+    if (CRM_API_BASE) parts.push(`Link: ${CRM_API_BASE.replace('/v1/', '/').replace('api.', 'app.')}/objects/person/records/${pid}`)
     if (ptitle) parts.push(`Title: ${ptitle}`)
     if (emails.length) parts.push(`Email: ${emails.join(', ')}`)
     if (phones.length) parts.push(`Phone: ${phones.join(', ')}`)
@@ -778,7 +778,7 @@ function buildSummary(args: BuildSummaryArgs): string {
     const dealNotes = deal.notes ?? ''
 
     parts.push(`\n### Deal: ${dname}`)
-    if (CLARIFY_BASE) parts.push(`Link: ${CLARIFY_BASE.replace('/v1/', '/').replace('api.', 'app.')}/objects/deal/records/${did}`)
+    if (CRM_API_BASE) parts.push(`Link: ${CRM_API_BASE.replace('/v1/', '/').replace('api.', 'app.')}/objects/deal/records/${did}`)
     if (stage) parts.push(`Stage: ${stage}`)
     if (amount) parts.push(`Amount: ${amount}`)
     if (closeDate) parts.push(`Close Date: ${closeDate}`)
@@ -816,7 +816,7 @@ function buildSummary(args: BuildSummaryArgs): string {
       const heading = excerpt.heading || `Excerpt ${i + 1}`
       let content = excerpt.content || ''
       const source = excerpt.source || ''
-      const sourceLabel = source.includes('memsearch') ? 'memsearch' : 'Clarify API'
+      const sourceLabel = source.includes('memsearch') ? 'memsearch' : 'CRM API'
       if (content.length > 1500) content = content.slice(0, 1500) + '...'
       parts.push(`\n**${heading}** (via ${sourceLabel})`)
       parts.push(content)
@@ -826,12 +826,12 @@ function buildSummary(args: BuildSummaryArgs): string {
   // Flag missing context
   const missing: string[] = []
   if (!person) {
-    missing.push('person (no contact linked to this task -- look up in Clarify by company or name from task title)')
+    missing.push('person (no contact linked to this task -- look up in CRM by company or name from task title)')
   } else if (extractEmails(person.email_addresses).length === 0) {
     missing.push('person email (contact found but no email on record)')
   }
   if (!company) {
-    missing.push('company (not linked -- search Clarify if company name appears in task title)')
+    missing.push('company (not linked -- search CRM if company name appears in task title)')
   }
   if (missing.length > 0) {
     parts.push('\n### Missing Context -- USE TOOLS TO LOOK UP')
@@ -1006,11 +1006,11 @@ RULES:
 CRITICAL: Produce the plan AND output in your FIRST response. Your job is ANALYSIS + ARTIFACT GENERATION, not codebase exploration.
 
 TOOL USAGE: If the enriched context above is MISSING key info needed for the output (e.g., email address, phone number, person details, deal status), USE TOOLS to look it up:
-- Use Bash to run \`cd agents/sdk/tools && python3 clarify/query.py person --filter "name[Contains]=PersonName"\` to find contacts
-- Use Bash to run \`cd agents/sdk/tools && python3 clarify/query.py company --filter "name[Contains]=CompanyName"\` to find company details
+- Use Bash to run \`cd agents/sdk/tools && python3 crm/query.py person --filter "name[Contains]=PersonName"\` to find contacts
+- Use Bash to run \`cd agents/sdk/tools && python3 crm/query.py company --filter "name[Contains]=CompanyName"\` to find company details
 - Use Read tool to check email templates at \`outputs/templates/email-templates.md\`
 - Use Read tool to check relevant skill files
-- NEVER leave placeholders like "[email]" or "[pull from Clarify]" -- look it up yourself
+- NEVER leave placeholders like "[email]" or "[pull from CRM]" -- look it up yourself
 - Do NOT explore the codebase or read files unrelated to the task`
 }
 
@@ -1168,14 +1168,14 @@ ${plan}
 # Execution Instructions
 
 Execute the plan above. You have full tool access:
-- Clarify MCP tools for CRM reads/writes
+- CRM MCP tools for CRM reads/writes
 - Gmail draft skill for emails (NEVER send -- drafts only)
 - File tools for document creation
 - Web search for research
 
 RULES:
 - Follow the plan step by step
-- Log all CRM changes to \`state/clarify-changelog.jsonl\` (format in CLAUDE.md)
+- Log all CRM changes to \`state/crm-changelog.jsonl\` (format in CLAUDE.md)
 - For emails: use \`skills/gmail-drafts/scripts/gmail-draft.py\` -- DRAFTS ONLY
 - For CRM writes: validate against \`skills/data-integrity-rules.md\` first
 - When done, summarize what you actually did (not what you planned to do)
@@ -1198,13 +1198,13 @@ function fallbackPrompt(task: any, context: EnrichmentResult): string {
   if (['send', 'email', 'draft', 'follow-up', 'pass'].some(kw => titleLower.includes(kw))) {
     action = 'Draft an email using `skills/gmail-drafts/SKILL.md` (NEVER send -- drafts only)'
   } else if (['research', 'evaluate', 'analyze', 'investigate'].some(kw => titleLower.includes(kw))) {
-    action = 'Research using web search + Clarify data, then update CRM'
+    action = 'Research using web search + CRM data, then update CRM'
   } else if (['schedule', 'book', 'meeting', 'calendar', 'coordinate'].some(kw => titleLower.includes(kw))) {
     action = 'Check calendar via `skills/calendar.skill` and coordinate'
   } else if (['prepare', 'create', 'write', 'compile'].some(kw => titleLower.includes(kw))) {
     action = 'Create the deliverable described in the task'
   } else if (['update', 'add', 'tag', 'label', 'mark'].some(kw => titleLower.includes(kw))) {
-    action = 'Update CRM records via Clarify REST API'
+    action = 'Update CRM records via CRM REST API'
   } else if (titleLower.includes('invite')) {
     action = 'Draft invitation email via Gmail draft skill'
   } else {
@@ -1213,7 +1213,7 @@ function fallbackPrompt(task: any, context: EnrichmentResult): string {
 
   return `### Plan
 1. ${action}
-2. Review context from Clarify (see below)
+2. Review context from CRM (see below)
 3. Produce deliverable
 
 ### Output
@@ -1239,7 +1239,7 @@ export interface DelegateResult {
 }
 
 /**
- * Enrich task with Clarify context, spawn Claude to analyze, return plan + output.
+ * Enrich task with CRM context, spawn Claude to analyze, return plan + output.
  * This is the main entry point for initial task analysis.
  */
 export async function runClaudeAnalysis(
@@ -1479,7 +1479,7 @@ export async function executePlan(
   let output = result.plan
   if (!output.trim()) {
     if (result.turns > 1) {
-      output = 'Execution completed but no summary was returned. Check Clarify/Gmail for results.'
+      output = 'Execution completed but no summary was returned. Check CRM/Gmail for results.'
     } else {
       output = 'No output generated.'
     }
@@ -1703,8 +1703,8 @@ or the word UNCHANGED if no new pattern needed.`
 // ═══════════════════════════════════════════
 
 /**
- * Full delegation flow: enrich from Clarify, then run Claude analysis.
- * Convenience wrapper that combines enrichFromClarify + runClaudeAnalysis.
+ * Full delegation flow: enrich from CRM, then run Claude analysis.
+ * Convenience wrapper that combines enrichFromCRM + runClaudeAnalysis.
  */
 export async function enrichAndAnalyze(
   task: any,
@@ -1712,7 +1712,7 @@ export async function enrichAndAnalyze(
 ): Promise<DelegateResult> {
   console.log(`[delegate] enrichAndAnalyze called for: ${task.title ?? '?'}`)
 
-  const context = await enrichFromClarify(task)
+  const context = await enrichFromCRM(task)
   console.log(`[delegate] enrichment done, summary length=${context.summary.length}`)
 
   const result = await runClaudeAnalysis(task, context, userContext)

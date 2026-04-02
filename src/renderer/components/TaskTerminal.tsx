@@ -823,8 +823,8 @@ export default function TaskTerminal({ task, onNotesChange, isActive = true, aut
           {task.is_recurring && (
             <span aria-label="Recurring task" className="text-[9px] font-medium px-2 py-0.5 rounded-md bg-amber-400/10 text-amber-400">Recurring</span>
           )}
-          {task.source === 'clarify' && task.source_id && window.__CLARIFY_BASE_URL && (
-            <a href={`${window.__CLARIFY_BASE_URL}/objects/task/records/${task.source_id}`}
+          {task.source === 'crm' && task.source_id && window.__CRM_BASE_URL && (
+            <a href={`${window.__CRM_BASE_URL}/objects/task/records/${task.source_id}`}
               className="text-[9px] font-medium px-2 py-0.5 rounded-md bg-blue-2 text-blue-1 hover:bg-blue-2/80 transition-all"
               target="_blank" rel="noopener noreferrer">
               Open in CRM

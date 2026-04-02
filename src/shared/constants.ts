@@ -35,7 +35,7 @@ export const FOLDER_COLORS = [
   '#FF6482', '#FFD60A', '#64D2FF', '#AC8E68',
 ]
 
-export const INBOX_SOURCES = new Set(['clarify', 'google_tasks', 'krisp', 'transcript', 'granola'])
+export const INBOX_SOURCES = new Set(['crm', 'google_tasks', 'voice_notes', 'transcript', 'meeting_notes'])
 
 export const ALLOWED_EXTENSIONS = new Set([
   '.png', '.jpg', '.jpeg', '.gif', '.webp', '.heic',

@@ -238,7 +238,7 @@ declare global {
 
     }
     /** CRM base URL for deep links (set from env var at startup) */
-    __CLARIFY_BASE_URL?: string
+    __CRM_BASE_URL?: string
   }
 }
 
@@ -246,8 +246,8 @@ declare global {
 // Initialize CRM base URL from env (set via main process IPC)
 // This runs once at module load and makes the URL available for deep links.
 try {
-  window.electronAPI?.getEnv?.('CLARIFY_APP_URL').then((url: string | null) => {
-    if (url) window.__CLARIFY_BASE_URL = url
+  window.electronAPI?.getEnv?.('CRM_APP_URL').then((url: string | null) => {
+    if (url) window.__CRM_BASE_URL = url
   })
 } catch { /* ignore — env not available */ }
 

@@ -289,7 +289,7 @@ export function initDatabase(): void {
           '',
           'ROCA can receive webhooks from meeting recorders to auto-extract action items:',
           '',
-          '- **Granola, Otter, Fireflies, Fathom** — Set up a webhook pointing to ROCA\'s local server',
+          '- **Meeting recorders (Otter, Fireflies, Fathom, etc.)** — Set up a webhook pointing to ROCA\'s local server',
           '- **Manual transcripts** — Paste or upload a meeting transcript into any task, and ROCA will extract action items',
           '',
           '### How it works',
@@ -715,8 +715,8 @@ export function getTasks(
     params.push(status)
   }
   if (source) {
-    if (source === 'krisp') {
-      query += " AND source IN ('krisp', 'transcript')"
+    if (source === 'voice_notes') {
+      query += " AND source IN ('voice_notes', 'transcript')"
     } else {
       query += ' AND source = ?'
       params.push(source)
@@ -1207,8 +1207,8 @@ export function getFolders(week?: string, source?: string, priority?: string): F
   const params: (string | number)[] = [week]
 
   if (source) {
-    if (source === 'krisp') {
-      query += " AND source IN ('krisp', 'transcript')"
+    if (source === 'voice_notes') {
+      query += " AND source IN ('voice_notes', 'transcript')"
     } else {
       query += ' AND source = ?'
       params.push(source)

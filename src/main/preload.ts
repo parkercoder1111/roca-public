@@ -154,8 +154,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ── Journal ──
   getJournal: () => ipcRenderer.invoke('journal:get'),
 
-  // ── Krisp webhook ──
-  ingestKrispWebhook: (payload: any) => ipcRenderer.invoke('webhook:krisp', payload),
+  // ── Voice notes webhook ──
+  ingestVoiceNoteWebhook: (payload: any) => ipcRenderer.invoke('webhook:voice-notes', payload),
 
   // ── Constants ──
   getStatusLabels: () => ipcRenderer.invoke('constants:status-labels'),

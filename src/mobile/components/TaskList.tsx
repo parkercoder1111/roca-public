@@ -33,21 +33,21 @@ interface Props {
 
 // ── Source badges ──
 const SOURCE_LABELS: Record<string, string> = {
-  clarify: 'CRM',
+  crm: 'CRM',
   recurring: 'Rec',
-  granola: 'Gran',
+  meeting_notes: 'MN',
   google_tasks: 'GTK',
-  krisp: 'Krsp',
+  voice_notes: 'VN',
   transcript: 'Xscr',
   organized: 'Org',
 }
 
 const SOURCE_COLORS: Record<string, { bg: string; text: string }> = {
-  clarify: { bg: 'rgba(0, 122, 255, 0.1)', text: '#007AFF' },
+  crm: { bg: 'rgba(0, 122, 255, 0.1)', text: '#007AFF' },
   recurring: { bg: 'rgba(255, 149, 0, 0.1)', text: '#FF9500' },
-  granola: { bg: 'rgba(175, 82, 222, 0.1)', text: '#AF52DE' },
+  meeting_notes: { bg: 'rgba(175, 82, 222, 0.1)', text: '#AF52DE' },
   google_tasks: { bg: 'rgba(0, 0, 0, 0.04)', text: '#8E8E93' },
-  krisp: { bg: 'rgba(52, 199, 89, 0.1)', text: '#34C759' },
+  voice_notes: { bg: 'rgba(52, 199, 89, 0.1)', text: '#34C759' },
   transcript: { bg: 'rgba(90, 200, 250, 0.1)', text: '#5AC8FA' },
   organized: { bg: 'rgba(175, 82, 222, 0.1)', text: '#AF52DE' },
 }
@@ -82,7 +82,7 @@ function TaskRow({ task, ptyStatus, onSelect }: {
   ptyStatus: string | null
   onSelect: () => void
 }) {
-  const needsTriage = !task.triaged_at && ['clarify', 'google_tasks', 'krisp', 'transcript', 'granola'].includes(task.source)
+  const needsTriage = !task.triaged_at && ['crm', 'google_tasks', 'voice_notes', 'transcript', 'meeting_notes'].includes(task.source)
   const statusBadge = needsTriage ? null : STATUS_BADGES[task.status]
   const sourceLabel = SOURCE_LABELS[task.source]
   const sourceColor = SOURCE_COLORS[task.source]

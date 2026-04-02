@@ -86,7 +86,7 @@ export default React.memo(function TaskRow({
     particleTimerRef.current = setTimeout(() => setParticles([]), 700)
   }, [])
 
-  const needsTriage = !task.triaged_at && ['clarify', 'google_tasks', 'krisp', 'transcript', 'granola'].includes(task.source)
+  const needsTriage = !task.triaged_at && ['crm', 'google_tasks', 'voice_notes', 'transcript', 'meeting_notes'].includes(task.source)
   const statusBadge = needsTriage
     ? null  // Review button already signals triage; badge is redundant
     : STATUS_BADGES[task.status]

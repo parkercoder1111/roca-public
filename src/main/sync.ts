@@ -29,47 +29,47 @@ function findClaudeBinary(): string | null {
 }
 
 // Read API keys lazily — env vars may be loaded after module import (Dock launch)
-function getClarifyApiKey(): string { return process.env.CLARIFY_API_KEY || '' }
-const CLARIFY_BASE = process.env.CLARIFY_API_BASE || ''
+function getCrmApiKey(): string { return process.env.CRM_API_KEY || '' }
+const CRM_API_BASE = process.env.CRM_API_BASE || ''
 const GTASKS_BASE = 'https://tasks.googleapis.com/tasks/v1'
 
 // ═══════════════════════════════════════════
-//  CLARIFY SYNC
+//  CRM SYNC
 // ═══════════════════════════════════════════
 
-export async function syncClarify(): Promise<number> {
-  if (!getClarifyApiKey()) {
-    console.log('[sync] CLARIFY_API_KEY not set, skipping Clarify sync')
+export async function syncCRM(): Promise<number> {
+  if (!getCrmApiKey()) {
+    console.log('[sync] CRM_API_KEY not set, skipping CRM sync')
     return 0
   }
 
-  const headers: Record<string, string> = { 'Authorization': `api-key ${getClarifyApiKey()}` }
+  const headers: Record<string, string> = { 'Authorization': `api-key ${getCrmApiKey()}` }
   const week = currentIsoWeek()
   let created = 0
 
   let data: any
   try {
     const resp = await fetch(
-      `${CLARIFY_BASE}/objects/task/resources?page[limit]=200`,
+      `${CRM_API_BASE}/objects/task/resources?page[limit]=200`,
       { headers, signal: AbortSignal.timeout(30000) }
     )
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
     data = await resp.json()
   } catch (e) {
-    console.error('[sync] Clarify API error:', e)
+    console.error('[sync] CRM API error:', e)
     return 0
   }
 
   const db = getDb()
   try {
-    // Build lookup of existing clarify tasks
-    const existingClarify = new Map<string, { id: number; status: string }>()
+    // Build lookup of existing CRM tasks
+    const existingCrm = new Map<string, { id: number; status: string }>()
     const existingRows = db.prepare(
-      "SELECT id, source_id, status FROM tasks WHERE source = 'clarify' AND source_id IS NOT NULL ORDER BY created_at DESC"
+      "SELECT id, source_id, status FROM tasks WHERE source = 'crm' AND source_id IS NOT NULL ORDER BY created_at DESC"
     ).all() as { id: number; source_id: string; status: string }[]
     for (const row of existingRows) {
-      if (!existingClarify.has(row.source_id)) {
-        existingClarify.set(row.source_id, { id: row.id, status: row.status })
+      if (!existingCrm.has(row.source_id)) {
+        existingCrm.set(row.source_id, { id: row.id, status: row.status })
       }
     }
 
@@ -91,14 +91,14 @@ export async function syncClarify(): Promise<number> {
 
     for (const record of data.data || []) {
       const attrs = record.attributes || {}
-      const clarifyId = record.id || ''
+      const crmId = record.id || ''
       const title = attrs.title || 'Untitled'
       const status = attrs.status || 'To Do'
 
       if (status === 'Canceled') continue
 
       const rocaStatus = status === 'Done' ? 'done' : 'open'
-      const existingTask = existingClarify.get(clarifyId)
+      const existingTask = existingCrm.get(crmId)
       if (existingTask) {
         if (existingTask.status !== rocaStatus && existingTask.status !== 'carried') {
           const completedAt = attrs._updated_at || new Date().toISOString()
@@ -122,7 +122,7 @@ export async function syncClarify(): Promise<number> {
 
       maxOrder += 1
       inserts.push([
-        title, 'clarify', clarifyId, priority, rocaStatus,
+        title, 'crm', crmId, priority, rocaStatus,
         attrs.due_date || null, companyName, dealName, null,
         week, createdAt,
         rocaStatus === 'done' ? (attrs._updated_at || null) : null,
@@ -151,10 +151,10 @@ export async function syncClarify(): Promise<number> {
       transaction()
     }
   } catch (e) {
-    console.error('[sync] Clarify processing error:', e)
+    console.error('[sync] CRM processing error:', e)
   }
 
-  console.log(`[sync] Clarify: synced ${created} new tasks`)
+  console.log(`[sync] CRM: synced ${created} new tasks`)
   return created
 }
 
@@ -174,7 +174,7 @@ async function resolveName(
 
   let name: string | null = null
   try {
-    const resp = await fetch(`${CLARIFY_BASE}/objects/${relType}/records/${recordId}`, {
+    const resp = await fetch(`${CRM_API_BASE}/objects/${relType}/records/${recordId}`, {
       headers, signal: AbortSignal.timeout(10000),
     })
     if (resp.ok) {
@@ -187,38 +187,38 @@ async function resolveName(
   return name
 }
 
-export async function pushTaskToClarify(sourceId: string, rocaStatus: string): Promise<boolean> {
-  if (!getClarifyApiKey() || !sourceId) return false
-  const clarifyStatus = rocaStatus === 'done' ? 'Done' : 'To Do'
+export async function pushTaskToCRM(sourceId: string, rocaStatus: string): Promise<boolean> {
+  if (!getCrmApiKey() || !sourceId) return false
+  const crmStatus = rocaStatus === 'done' ? 'Done' : 'To Do'
   try {
-    const resp = await fetch(`${CLARIFY_BASE}/objects/task/records/${sourceId}`, {
+    const resp = await fetch(`${CRM_API_BASE}/objects/task/records/${sourceId}`, {
       method: 'PATCH',
       headers: {
-        'Authorization': `api-key ${getClarifyApiKey()}`,
+        'Authorization': `api-key ${getCrmApiKey()}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        data: { type: 'task', id: sourceId, attributes: { status: clarifyStatus } },
+        data: { type: 'task', id: sourceId, attributes: { status: crmStatus } },
       }),
       signal: AbortSignal.timeout(15000),
     })
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-    console.log(`[sync] Pushed to Clarify: ${sourceId} -> ${clarifyStatus}`)
+    console.log(`[sync] Pushed to CRM: ${sourceId} -> ${crmStatus}`)
     return true
   } catch (e) {
-    console.error(`[sync] Clarify push error for ${sourceId}:`, e)
+    console.error(`[sync] CRM push error for ${sourceId}:`, e)
     return false
   }
 }
 
 // ═══════════════════════════════════════════
-//  GRANOLA SYNC
+//  MEETING NOTES SYNC
 // ═══════════════════════════════════════════
 
-export async function syncGranola(): Promise<number> {
-  const token = getGranolaToken()
+export async function syncMeetingNotes(): Promise<number> {
+  const token = getMeetingNotesToken()
   if (!token) {
-    console.log('[sync] Granola token not found, skipping')
+    console.log('[sync] Meeting notes token not found, skipping')
     return 0
   }
 
@@ -227,6 +227,7 @@ export async function syncGranola(): Promise<number> {
   let created = 0
 
   try {
+    // Meeting notes API — configure for your provider
     const resp = await fetch('https://api.granola.ai/v2/get-documents', {
       method: 'POST',
       headers,
@@ -241,17 +242,17 @@ export async function syncGranola(): Promise<number> {
 
     for (const doc of docs) {
       const docId = doc.id || ''
-      const title = doc.title || 'Granola meeting'
+      const title = doc.title || 'Meeting notes'
 
       // First try: extract action items from notes (checkbox syntax)
       const actionItems = extractActionItems(doc)
 
       for (let i = 0; i < actionItems.length; i++) {
         const sourceId = `${docId}_${i}`
-        if (taskExistsBySource('granola', sourceId)) continue
+        if (taskExistsBySource('meeting_notes', sourceId)) continue
         createTask({
           title: actionItems[i],
-          source: 'granola',
+          source: 'meeting_notes',
           source_id: sourceId,
           priority: 'medium',
           notes: `From meeting: ${title}`,
@@ -265,32 +266,33 @@ export async function syncGranola(): Promise<number> {
         // Skip if we already processed this doc's transcript (any source)
         const existing = db.prepare(
           "SELECT id FROM tasks WHERE source_id LIKE ?"
-        ).get(`transcript_granola_${docId}_%`) as { id: number } | undefined
+        ).get(`transcript_meeting_notes_${docId}_%`) as { id: number } | undefined
         if (existing) continue
 
-        const transcript = await fetchGranolaTranscript(docId, headers)
+        const transcript = await fetchMeetingNotesTranscript(docId, headers)
         if (transcript && transcript.length >= 50) {
           const meetingDate = doc.created_at || ''
-          console.log(`[sync] Processing Granola transcript: ${title} (${docId.slice(0, 8)}...)`)
+          console.log(`[sync] Processing meeting notes transcript: ${title} (${docId.slice(0, 8)}...)`)
           const transcriptCreated = await processTranscript(
-            `granola_${docId}`, title, transcript, meetingDate, 'granola'
+            `meeting_notes_${docId}`, title, transcript, meetingDate, 'meeting_notes'
           )
           created += transcriptCreated
         }
       }
     }
   } catch (e) {
-    console.error('[sync] Granola error:', e)
+    console.error('[sync] Meeting notes error:', e)
   }
 
-  console.log(`[sync] Granola: synced ${created} new tasks`)
+  console.log(`[sync] Meeting notes: synced ${created} new tasks`)
   return created
 }
 
-async function fetchGranolaTranscript(
+async function fetchMeetingNotesTranscript(
   docId: string, headers: Record<string, string>
 ): Promise<string> {
   try {
+    // Meeting notes API — configure for your provider
     const resp = await fetch('https://api.granola.ai/v1/get-document-transcript', {
       method: 'POST',
       headers,
@@ -307,12 +309,13 @@ async function fetchGranolaTranscript(
       .filter(t => t)
       .join(' ')
   } catch (e) {
-    console.error(`[sync] Granola transcript fetch error for ${docId}:`, e)
+    console.error(`[sync] Meeting notes transcript fetch error for ${docId}:`, e)
     return ''
   }
 }
 
-function getGranolaToken(): string | null {
+function getMeetingNotesToken(): string | null {
+  // Reads credentials from locally installed meeting notes app
   const credPath = path.join(os.homedir(), 'Library/Application Support/Granola/supabase.json')
   if (!fs.existsSync(credPath)) return null
   try {
@@ -329,7 +332,7 @@ function getGranolaToken(): string | null {
       if (typeof val === 'string' && (val as string).length > 50) return val as string
     }
   } catch (e) {
-    console.error('[sync] Error reading Granola creds:', e)
+    console.error('[sync] Error reading meeting notes creds:', e)
   }
   return null
 }
@@ -576,15 +579,15 @@ export async function pushTaskToGoogleTasks(sourceId: string, rocaStatus: string
 }
 
 // ═══════════════════════════════════════════
-//  KRISP SYNC
+//  VOICE NOTES SYNC
 // ═══════════════════════════════════════════
 
-export function syncKrisp(customStagingPath?: string): number {
-  // Krisp staging file — prefer explicit path, then env var, then ROCA's userData dir
-  const stagingPath = customStagingPath || process.env.KRISP_STAGING_PATH ||
-    path.join(os.homedir(), 'Library/Application Support/ROCA/krisp-staging.json')
+export function syncVoiceNotes(customStagingPath?: string): number {
+  // Voice notes staging file — prefer explicit path, then env var, then ROCA's userData dir
+  const stagingPath = customStagingPath || process.env.VOICE_NOTES_STAGING_PATH ||
+    path.join(os.homedir(), 'Library/Application Support/ROCA/voice-notes-staging.json')
   if (!fs.existsSync(stagingPath)) {
-    console.log('[sync] Krisp staging file not found, skipping')
+    console.log('[sync] Voice notes staging file not found, skipping')
     return 0
   }
 
@@ -592,7 +595,7 @@ export function syncKrisp(customStagingPath?: string): number {
   try {
     data = JSON.parse(fs.readFileSync(stagingPath, 'utf-8'))
   } catch (e) {
-    console.error('[sync] Krisp staging read error:', e)
+    console.error('[sync] Voice notes staging read error:', e)
     return 0
   }
 
@@ -604,7 +607,7 @@ export function syncKrisp(customStagingPath?: string): number {
 
   for (const meetingId of Object.keys(meetings)) {
     const meeting = meetings[meetingId]
-    const meetingName = meeting.meeting_name || 'Krisp meeting'
+    const meetingName = meeting.meeting_name || 'Voice note meeting'
     const meetingDate = meeting.meeting_date || ''
     const items = meeting.action_items || []
 
@@ -637,7 +640,7 @@ export function syncKrisp(customStagingPath?: string): number {
       }
 
       // Already synced
-      if (taskExistsBySource('krisp', itemId)) {
+      if (taskExistsBySource('voice_notes', itemId)) {
         skippedExisting++
         continue
       }
@@ -662,7 +665,7 @@ export function syncKrisp(customStagingPath?: string): number {
 
       createTask({
         title,
-        source: 'krisp',
+        source: 'voice_notes',
         source_id: itemId,
         priority: 'medium',
         notes: note,
@@ -672,25 +675,25 @@ export function syncKrisp(customStagingPath?: string): number {
     }
   }
 
-  console.log(`[sync] Krisp: created ${created} tasks, skipped ${skippedAssignee} (other assignee), ${skippedExisting} (already exist)`)
+  console.log(`[sync] Voice notes: created ${created} tasks, skipped ${skippedAssignee} (other assignee), ${skippedExisting} (already exist)`)
   return created
 }
 
 // ═══════════════════════════════════════════
-//  KRISP WEBHOOK LOG — catch up on transcripts
+//  VOICE NOTES WEBHOOK LOG — catch up on transcripts
 // ═══════════════════════════════════════════
 
-export async function processKrispWebhookTranscripts(): Promise<number> {
+export async function processVoiceNoteTranscripts(): Promise<number> {
   // Read the webhook log and process any unprocessed transcript events
-  const logPath = process.env.KRISP_WEBHOOK_LOG ||
-    path.join(app.getPath('userData'), 'krisp-webhook-log.jsonl')
+  const logPath = process.env.VOICE_NOTES_WEBHOOK_LOG ||
+    path.join(app.getPath('userData'), 'voice-notes-webhook-log.jsonl')
   if (!fs.existsSync(logPath)) return 0
 
   let lines: string[]
   try {
     lines = fs.readFileSync(logPath, 'utf-8').split('\n').filter(l => l.trim())
   } catch (e) {
-    console.error('[sync] Error reading Krisp webhook log:', e)
+    console.error('[sync] Error reading voice notes webhook log:', e)
     return 0
   }
 
@@ -715,7 +718,7 @@ export async function processKrispWebhookTranscripts(): Promise<number> {
     ).get(`transcript_${meetingId}_%`) as { id: number } | undefined
     if (existing) continue
 
-    const meetingName = meeting.title || 'Krisp meeting'
+    const meetingName = meeting.title || 'Voice note meeting'
     const meetingDate = meeting.start_date || ''
 
     // Build transcript text from content array or raw_content
@@ -730,13 +733,13 @@ export async function processKrispWebhookTranscripts(): Promise<number> {
 
     if (!transcript || transcript.trim().length < 50) continue
 
-    console.log(`[sync] Processing Krisp transcript: ${meetingName} (${meetingId.slice(0, 8)}...)`)
-    const count = await processTranscript(meetingId, meetingName, transcript, meetingDate, 'krisp')
+    console.log(`[sync] Processing voice note transcript: ${meetingName} (${meetingId.slice(0, 8)}...)`)
+    const count = await processTranscript(meetingId, meetingName, transcript, meetingDate, 'voice_notes')
     processed += count
   }
 
   if (processed > 0) {
-    console.log(`[sync] Krisp webhook log: created ${processed} tasks from transcripts`)
+    console.log(`[sync] Voice notes webhook log: created ${processed} tasks from transcripts`)
   }
   return processed
 }
@@ -915,32 +918,32 @@ RULES:
 export async function reconcileAll(): Promise<number> {
   let pushed = 0
 
-  // --- Clarify reconcile ---
-  if (getClarifyApiKey()) {
+  // --- CRM reconcile ---
+  if (getCrmApiKey()) {
     const db = getDb()
     const tasks = db.prepare(
-      "SELECT source_id, status FROM tasks WHERE source = 'clarify' AND status IN ('open', 'done')"
+      "SELECT source_id, status FROM tasks WHERE source = 'crm' AND status IN ('open', 'done')"
     ).all() as { source_id: string; status: string }[]
 
-    const headers = { 'Authorization': `api-key ${getClarifyApiKey()}` }
+    const headers = { 'Authorization': `api-key ${getCrmApiKey()}` }
 
     for (const task of tasks) {
       const sourceId = task.source_id
       const rocaStatus = task.status
       try {
-        const url = `${CLARIFY_BASE}/objects/task/records/${sourceId}`
+        const url = `${CRM_API_BASE}/objects/task/records/${sourceId}`
         const resp = await fetch(url, { headers, signal: AbortSignal.timeout(10000) })
         if (!resp.ok) continue
         const data = await resp.json() as any
-        const clarifyStatus = data.data?.attributes?.status || ''
-        const clarifyIsDone = clarifyStatus === 'Done'
+        const crmStatus = data.data?.attributes?.status || ''
+        const crmIsDone = crmStatus === 'Done'
         const rocaIsDone = rocaStatus === 'done'
-        if (rocaIsDone !== clarifyIsDone) {
-          if (await pushTaskToClarify(sourceId, rocaStatus)) pushed++
+        if (rocaIsDone !== crmIsDone) {
+          if (await pushTaskToCRM(sourceId, rocaStatus)) pushed++
         }
       } catch { continue }
     }
-    console.log(`[reconcile] Pushed ${pushed} Clarify status updates`)
+    console.log(`[reconcile] Pushed ${pushed} CRM status updates`)
   }
 
   // --- Google Tasks reconcile ---
@@ -984,10 +987,10 @@ export async function reconcileAll(): Promise<number> {
 }
 
 export async function syncAll(): Promise<number> {
-  const clarifyCount = await syncClarify()
-  const granolaCount = await syncGranola()
+  const crmCount = await syncCRM()
+  const meetingNotesCount = await syncMeetingNotes()
   const gtasksCount = await syncGoogleTasks()
-  const krispCount = syncKrisp()
-  const krispTranscriptCount = await processKrispWebhookTranscripts()
-  return clarifyCount + granolaCount + gtasksCount + krispCount + krispTranscriptCount
+  const voiceNotesCount = syncVoiceNotes()
+  const voiceNoteTranscriptCount = await processVoiceNoteTranscripts()
+  return crmCount + meetingNotesCount + gtasksCount + voiceNotesCount + voiceNoteTranscriptCount
 }
