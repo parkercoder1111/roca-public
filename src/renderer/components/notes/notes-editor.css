@@ -1,0 +1,94 @@
+/* Rich-text (TipTap/ProseMirror) styling for the notes editor. Scoped under
+   .roca-notes-editor so it never leaks into the rest of the app. Colors come
+   from ROCA's palette CSS variables so it tracks light/dark + the reskin. */
+
+.roca-notes-editor .ProseMirror {
+  outline: none;
+  color: var(--color-text-2);
+  font-size: 13px;
+  line-height: 1.65;
+  caret-color: var(--color-purple-1);
+}
+.roca-notes-editor.roca-notes-compact .ProseMirror { font-size: 11px; line-height: 1.6; }
+
+.roca-notes-editor .ProseMirror > * + * { margin-top: 0.6em; }
+
+.roca-notes-editor .ProseMirror h1,
+.roca-notes-editor .ProseMirror h2,
+.roca-notes-editor .ProseMirror h3 {
+  color: var(--color-text-1);
+  font-weight: 650;
+  line-height: 1.3;
+  margin-top: 1.1em;
+}
+.roca-notes-editor .ProseMirror h1 { font-size: 1.5em; }
+.roca-notes-editor .ProseMirror h2 { font-size: 1.25em; }
+.roca-notes-editor .ProseMirror h3 { font-size: 1.08em; }
+
+.roca-notes-editor .ProseMirror strong { color: var(--color-text-1); font-weight: 680; }
+.roca-notes-editor .ProseMirror a {
+  color: var(--color-purple-1);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.roca-notes-editor .ProseMirror ul,
+.roca-notes-editor .ProseMirror ol { padding-left: 1.35em; }
+.roca-notes-editor .ProseMirror ul { list-style: disc; }
+.roca-notes-editor .ProseMirror ol { list-style: decimal; }
+.roca-notes-editor .ProseMirror li { margin: 0.15em 0; }
+.roca-notes-editor .ProseMirror li > p { margin: 0; }
+
+/* Task (checkbox) lists */
+.roca-notes-editor .ProseMirror ul[data-type="taskList"] { list-style: none; padding-left: 0.1em; }
+.roca-notes-editor .ProseMirror ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5em;
+}
+.roca-notes-editor .ProseMirror ul[data-type="taskList"] li > label {
+  margin-top: 0.28em;
+  user-select: none;
+}
+.roca-notes-editor .ProseMirror ul[data-type="taskList"] li > div { flex: 1 1 auto; min-width: 0; }
+.roca-notes-editor .ProseMirror ul[data-type="taskList"] input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--color-purple-1);
+  cursor: pointer;
+}
+.roca-notes-editor .ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div {
+  color: var(--color-text-3);
+  text-decoration: line-through;
+}
+
+.roca-notes-editor .ProseMirror code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+}
+.roca-notes-editor .ProseMirror pre {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  padding: 0.8em 1em;
+  overflow-x: auto;
+}
+.roca-notes-editor .ProseMirror pre code { background: none; padding: 0; }
+.roca-notes-editor .ProseMirror blockquote {
+  border-left: 2px solid var(--color-hairline);
+  padding-left: 1em;
+  color: var(--color-text-3);
+}
+
+/* Placeholder — shown on the first empty line */
+.roca-notes-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--color-text-3);
+  opacity: 0.4;
+  pointer-events: none;
+  height: 0;
+}

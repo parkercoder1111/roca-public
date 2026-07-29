@@ -1,0 +1,888 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;450;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ROCA — "Workshop Journal" design system
+   Paper-cream surfaces, ink/oxblood accent, serif+mono type pairing.
+   Tokens are retained by name (surface-0..4, text-1..3, purple-1/2) to avoid
+   churning every call site — values reshaped to match the new aesthetic.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* Paper surfaces — warm off-whites instead of clinical #FFFFFF */
+  --color-surface-0: #FBFAF6;   /* paper base */
+  --color-surface-1: #F5F3EC;   /* card tint */
+  --color-surface-2: #EDEADF;   /* raised tint */
+  --color-surface-3: #DDD9CC;   /* strong tint */
+  --color-surface-4: #C5C0B0;   /* border-adjacent */
+  --color-paper-cream: #FBFAF6;
+  --color-paper-ivory: #F5F3EC;
+
+  /* Ink hierarchy — warm blacks */
+  --color-text-1: #1A1715;      /* ink */
+  --color-text-2: #4A443D;      /* body */
+  --color-text-3: #8B8579;      /* muted */
+  --color-border-1: rgba(26,23,21,0.10);
+  --color-border-2: rgba(26,23,21,0.18);
+  --color-hairline: rgba(26,23,21,0.07);
+
+  /* Signature accent: oxblood (replaces the generic tech-purple as the primary
+     "selected / interactive" color). Kept under the purple-* names so every
+     existing `text-purple-1`, `bg-purple-2`, `ring-purple-1/*` utility inherits
+     the new palette without a rename pass. */
+  --color-purple-1: #7A1F2B;            /* oxblood */
+  --color-purple-2: rgba(122,31,43,0.10);
+  --color-oxblood: #7A1F2B;
+  --color-oxblood-deep: #5A161F;
+
+  /* Semantic badges — muted, heritage palette */
+  --color-blue-1: #1F4E7A;              /* slate-blue */
+  --color-blue-2: rgba(31,78,122,0.12);
+  --color-green-1: #3E6B3A;             /* moss */
+  --color-green-2: rgba(62,107,58,0.14);
+  --color-green-bright: #4F8B46;        /* used by completion animations */
+  --color-red-1: #B03A2E;               /* pompeiian red */
+  --color-red-2: rgba(176,58,46,0.12);
+
+  /* Voice mode state colors — intentionally distinct from UI semantic colors:
+     listening uses the signature oxblood, processing stays amber for "needs
+     attention," speaking uses a faded teal that reads as "output/playback." */
+  --voice-color-listening: var(--color-oxblood);
+  --voice-color-processing: #C58A2E;
+  --voice-color-speaking: #4F8B9B;
+
+  /* Typography — Inter for everything, SF Mono for code/metadata only */
+  --font-sans: 'Inter', ui-sans-serif, -apple-system, system-ui, sans-serif;
+  --font-mono: 'SF Mono', Menlo, Monaco, 'Cascadia Code', 'Courier New', monospace;
+
+  /* Theme-adaptive rgb triples — used anywhere we need an rgba() with a
+     component of ink or paper (scrollbars, body grain, etc). */
+  --rgb-ink: 26, 23, 21;
+  --rgb-paper: 251, 250, 246;
+  --rgb-oxblood: 122, 31, 43;
+  --rgb-moss: 62, 107, 58;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DARK MODE — warm ink surfaces, ivory text, brightened accent.
+   Applied via <html data-theme="dark">; toggle lives in the top nav.
+   We override the same token names so every downstream rule inherits the new
+   palette without touching call sites.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root[data-theme="dark"] {
+  /* Surfaces — warm ink rather than pure #000; reads as "paper at night" */
+  --color-surface-0: #15120F;
+  --color-surface-1: #1E1A16;
+  --color-surface-2: #272320;
+  --color-surface-3: #3A352F;
+  --color-surface-4: #5A544C;
+  --color-paper-cream: #15120F;
+  --color-paper-ivory: #1E1A16;
+
+  /* Ink hierarchy — warm ivory, not harsh white */
+  --color-text-1: #F2EDE3;
+  --color-text-2: #B8B0A3;
+  --color-text-3: #7C7468;
+  --color-border-1: rgba(242,237,227,0.12);
+  --color-border-2: rgba(242,237,227,0.22);
+  --color-hairline: rgba(242,237,227,0.09);
+
+  /* Signature accent — brightened oxblood so it still pops against ink */
+  --color-purple-1: #C76E7B;
+  --color-purple-2: rgba(199,110,123,0.16);
+  --color-oxblood: #C76E7B;
+  --color-oxblood-deep: #A04A57;
+
+  /* Semantic badges — lifted for dark-on-dark legibility */
+  --color-blue-1: #7FB0D8;
+  --color-blue-2: rgba(127,176,216,0.15);
+  --color-green-1: #8FBE83;
+  --color-green-2: rgba(143,190,131,0.16);
+  --color-green-bright: #9FD18F;
+  --color-red-1: #E08576;
+  --color-red-2: rgba(224,133,118,0.16);
+
+  /* Voice mode */
+  --voice-color-listening: var(--color-oxblood);
+  --voice-color-processing: #E4B060;
+  --voice-color-speaking: #7FC0D0;
+
+  /* rgb triples flipped so rgba() paper/ink mixes invert correctly */
+  --rgb-ink: 242, 237, 227;
+  --rgb-paper: 21, 18, 15;
+  --rgb-oxblood: 199, 110, 123;
+}
+
+* { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+body, *:not(.xterm *) {
+  font-family: var(--font-sans) !important;
+  font-weight: 450;
+  letter-spacing: -0.01em;
+  font-feature-settings: 'ss01', 'cv11';  /* stylistic alternates + tabular figures */
+}
+.xterm, .xterm * {
+  font-family: 'SF Mono', Menlo, Monaco, 'Cascadia Code', 'Courier New', monospace !important;
+  letter-spacing: normal !important;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--color-paper-cream);
+  color: var(--color-text-1);
+  /* Hairline grain — barely perceptible texture that differentiates ROCA from
+     generic flat-white Electron apps. Dark mode gets its own subtler SVG
+     noise via the :root[data-theme="dark"] override further down. */
+  background-image:
+    radial-gradient(at 8% 0%, rgba(var(--rgb-oxblood), 0.02) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(var(--rgb-moss), 0.015) 0px, transparent 50%),
+    url("data:image/svg+xml;utf8,%3Csvg viewBox='0 0 140 140' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.09 0 0 0 0 0.08 0 0 0 0.035 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+/* Dark-mode grain: lighten-on-dark noise that reads as paper texture on ink */
+:root[data-theme="dark"] body {
+  background-image:
+    radial-gradient(at 8% 0%, rgba(var(--rgb-oxblood), 0.10) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(127,176,216,0.04) 0px, transparent 50%),
+    url("data:image/svg+xml;utf8,%3Csvg viewBox='0 0 140 140' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 0.96 0 0 0 0 0.9 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ═══ Type utilities ═══ */
+.mono {
+  font-family: var(--font-mono) !important;
+  font-feature-settings: 'tnum';    /* tabular figures */
+  letter-spacing: 0;
+}
+.mono-caps {
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-3);
+}
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* ═══ Decorative utilities ═══ */
+.hairline { border: 1px solid var(--color-hairline); }
+.hairline-b { border-bottom: 1px solid var(--color-hairline); }
+.hairline-t { border-top: 1px solid var(--color-hairline); }
+.hairline-r { border-right: 1px solid var(--color-hairline); }
+.hairline-l { border-left: 1px solid var(--color-hairline); }
+
+/* Keyboard hint glyph — small mono chip that surfaces shortcuts inline */
+.kbd {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  line-height: 1;
+  padding: 2px 5px 3px;
+  border-radius: 4px;
+  background: var(--color-surface-2);
+  color: var(--color-text-2);
+  border: 1px solid var(--color-hairline);
+  box-shadow: 0 1px 0 0 var(--color-hairline);
+  letter-spacing: 0.02em;
+}
+
+/* ═══ Task row ═══ */
+.task-row {
+  position: relative;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+.task-row:hover { background: color-mix(in srgb, var(--color-oxblood) 3%, transparent); }
+/* Selected task: oxblood-tinted paper + a sharp 2px left ink rail.
+   The rail is the signature "you are here" signal — quieter than a full fill,
+   louder than a subtle tint, and works equally well for urgent and non-urgent rows. */
+.task-row.active-task {
+  background: color-mix(in srgb, var(--color-oxblood) 6%, transparent);
+}
+.task-row.active-task::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 6px; bottom: 6px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--color-oxblood);
+}
+/* Urgent rows get a pompeiian-red left rail even when not selected — priority at a glance */
+.task-row.urgent-task {
+  background: color-mix(in srgb, var(--color-red-1) 5%, transparent);
+}
+.task-row.urgent-task::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 6px; bottom: 6px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--color-red-1);
+  opacity: 0.7;
+}
+.task-row.active-task.urgent-task { background: color-mix(in srgb, var(--color-red-1) 9%, transparent); }
+.task-row.active-task.urgent-task::before { background: var(--color-red-1); opacity: 1; }
+.task-row.keyboard-focus {
+  background: color-mix(in srgb, var(--color-oxblood) 3%, transparent);
+  outline: 1px solid var(--color-hairline);
+  outline-offset: -1px;
+  border-radius: 10px;
+}
+
+/* Analyzing task -- purple breathing glow */
+.task-row.analyzing-task {
+  background: color-mix(in srgb, var(--color-purple-1) 6%, transparent);
+  animation: analyzingGlow 2s ease-in-out infinite;
+  border-left: 2px solid color-mix(in srgb, var(--color-purple-1) 50%, transparent);
+  position: relative;
+}
+.task-row.analyzing-task::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(155,89,182,0.08), transparent 60%);
+  animation: analyzingSweep 2.5s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes analyzingGlow {
+  0%, 100% { box-shadow: inset 0 0 12px rgba(155,89,182,0.05), 0 0 0 0 rgba(155,89,182,0); }
+  50% { box-shadow: inset 0 0 20px rgba(155,89,182,0.08), 0 0 20px rgba(155,89,182,0.04); }
+}
+@keyframes analyzingSweep {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+/* New task slide-in */
+.task-row-new {
+  animation: taskSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes taskSlideIn {
+  0% { opacity: 0; transform: translateY(12px) scale(0.97); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ═══ Action button loading states ═══ */
+.action-btn-loading {
+  pointer-events: none;
+  border-radius: 10px;
+  isolation: isolate;
+  overflow: hidden;
+  box-shadow: 0 0 16px rgba(26,171,70,0.15), 0 0 40px rgba(26,171,70,0.06);
+  animation: btnGlowPulse 2s ease-in-out infinite;
+}
+.action-btn-loading::before {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background: conic-gradient(transparent 40%, var(--color-green-bright) 65%, rgba(26,171,70,0.80) 80%, transparent 100%);
+  animation: btnBorderSpin 1.2s linear infinite;
+  z-index: 0;
+}
+.action-btn-loading::after {
+  content: '';
+  position: absolute;
+  inset: 1.5px;
+  border-radius: 8.5px;
+  background: linear-gradient(135deg, var(--color-surface-0), var(--color-surface-1));
+  z-index: 0;
+}
+.action-btn-loading > * {
+  position: relative;
+  z-index: 1;
+}
+.action-btn-loading .sync-icon {
+  animation: iconElasticSpin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  filter: drop-shadow(0 0 4px rgba(26,171,70,0.5));
+  color: var(--color-green-bright);
+}
+
+/* Purple variant (Organize) */
+.action-btn-loading.action-btn-loading-purple::before {
+  background: conic-gradient(transparent 40%, var(--color-purple-1) 65%, color-mix(in srgb, var(--color-purple-1) 80%, transparent) 80%, transparent 100%);
+}
+.action-btn-loading.action-btn-loading-purple {
+  box-shadow: 0 0 16px rgba(155,89,182,0.15), 0 0 40px rgba(155,89,182,0.06);
+  animation: btnGlowPulsePurple 2s ease-in-out infinite;
+}
+.action-btn-loading.action-btn-loading-purple .sync-icon {
+  filter: drop-shadow(0 0 4px rgba(123,47,160,0.5));
+  color: var(--color-purple-1);
+}
+
+@keyframes btnBorderSpin { to { transform: rotate(360deg); } }
+@keyframes btnGlowPulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(26,171,70,0.1), 0 0 30px rgba(26,171,70,0.04); }
+  50% { box-shadow: 0 0 22px rgba(26,171,70,0.2), 0 0 50px rgba(26,171,70,0.08); }
+}
+@keyframes btnGlowPulsePurple {
+  0%, 100% { box-shadow: 0 0 12px rgba(155,89,182,0.1), 0 0 30px rgba(155,89,182,0.04); }
+  50% { box-shadow: 0 0 22px rgba(155,89,182,0.2), 0 0 50px rgba(155,89,182,0.08); }
+}
+@keyframes iconElasticSpin {
+  0% { transform: rotate(0deg) scale(1); }
+  40% { transform: rotate(200deg) scale(0.9); }
+  70% { transform: rotate(340deg) scale(1.08); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+/* ═══ Task row cascade effects ═══ */
+
+/* Green cascade (sync complete) */
+.task-cascade-green {
+  animation: cascadeGreen 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  border-left: 2px solid rgba(26,171,70,0.6);
+}
+@keyframes cascadeGreen {
+  0% { background: rgba(26,171,70,0.12); box-shadow: inset 0 0 30px rgba(26,171,70,0.08), 0 0 8px rgba(26,171,70,0.06); transform: translateX(0); }
+  15% { background: rgba(26,171,70,0.16); transform: translateX(4px) scale(1.005); }
+  40% { transform: translateX(-1px) scale(0.998); }
+  100% { background: transparent; box-shadow: none; transform: translateX(0) scale(1); border-left-color: transparent; }
+}
+
+/* Purple cascade (organize complete) */
+.task-cascade-purple {
+  animation: cascadePurple 0.75s cubic-bezier(0.4, 0, 0.2, 1);
+  border-left: 2px solid rgba(155,89,182,0.6);
+}
+@keyframes cascadePurple {
+  0% { background: rgba(155,89,182,0.1); box-shadow: inset 0 0 25px rgba(155,89,182,0.08), 0 0 8px rgba(155,89,182,0.06); transform: scale(1); }
+  20% { background: rgba(155,89,182,0.16); transform: scale(1.012) translateX(3px); }
+  45% { transform: scale(0.995) translateX(-1px); }
+  100% { background: transparent; box-shadow: none; transform: scale(1) translateX(0); border-left-color: transparent; }
+}
+
+/* Scan line (sync loading) */
+.task-scan-line { position: relative; overflow: hidden; }
+.task-scan-line::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  left: 0; width: 30%;
+  background: linear-gradient(90deg, transparent, rgba(26,171,70,0.06), rgba(26,171,70,0.14), rgba(26,171,70,0.06), transparent);
+  animation: scanSweep 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  border-radius: inherit;
+}
+.task-scan-line::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0; width: 2px;
+  background: rgba(26,171,70,0.4);
+  animation: scanEdge 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 1;
+}
+@keyframes scanSweep { 0% { left: -30%; } 100% { left: 100%; } }
+@keyframes scanEdge { 0% { left: -2px; opacity: 1; } 100% { left: 100%; opacity: 0; } }
+
+/* Shimmer loop (organize loading) */
+.task-shimmer-purple { position: relative; overflow: hidden; }
+.task-shimmer-purple::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  left: 0; width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(155,89,182,0.05), rgba(155,89,182,0.12), rgba(155,89,182,0.05), transparent);
+  animation: scanSweep 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* ═══ Drag-to-reorder ═══ */
+.task-row.sortable-ghost { opacity: 0.3; }
+.task-row.sortable-chosen { background: rgba(155,89,182,0.08); }
+.task-row.sortable-drag {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.97);
+}
+.drag-handle { touch-action: none; }
+/* Drop position indicators */
+.task-row.drop-before { box-shadow: 0 -2px 0 0 rgba(155,89,182,0.5); }
+.task-row.drop-after { box-shadow: 0 2px 0 0 rgba(155,89,182,0.5); }
+/* Merge-into-this-row indicator — a soft purple wash + inset ring. Visually
+   distinct from the thin edge bars used for reorder so the user can tell
+   "drop in middle = combine" from "drop on edge = move here". */
+.task-row.drop-merge {
+  background: rgba(155,89,182,0.10);
+  box-shadow: inset 0 0 0 2px rgba(155,89,182,0.55);
+  border-radius: 8px;
+}
+.folder-item.drop-before { box-shadow: 0 -2px 0 0 rgba(155,89,182,0.5); }
+.folder-item.drop-after { box-shadow: 0 2px 0 0 rgba(155,89,182,0.5); }
+
+/* ═══ Folder animations ═══ */
+.folder-item { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+.folder-body { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+.folder-drop-zone.drag-over {
+  background: rgba(155,89,182,0.06);
+  border: 1px dashed rgba(155,89,182,0.3);
+  border-radius: 8px;
+}
+.folder-task.sortable-ghost { opacity: 0.3; }
+.folder-task.sortable-chosen { background: rgba(155,89,182,0.08); }
+.folder-new {
+  animation: folderSlideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes folderSlideIn {
+  0% { opacity: 0; transform: translateY(-10px) scale(0.95); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.folder-task-enter {
+  animation: folderTaskDrop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes folderTaskDrop {
+  0% { opacity: 0; transform: scale(0.9); }
+  60% { transform: scale(1.02); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* ═══ Task completion ═══ */
+.task-done { animation: checkOff 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+@keyframes checkOff {
+  0% { opacity: 1; transform: translateX(0); }
+  60% { opacity: 0.4; transform: translateX(6px); }
+  100% { opacity: 0; height: 0; padding: 0; margin: 0; overflow: hidden; }
+}
+
+.checkbox-done { animation: pop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.checkbox-completing {
+  animation: checkboxFillIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes checkboxFillIn {
+  0% { transform: scale(1); background: transparent; border-color: rgba(0,0,0,0.2); }
+  40% { transform: scale(1.3); background: var(--color-green-bright); border-color: var(--color-green-bright); }
+  70% { transform: scale(0.9); }
+  100% { transform: scale(1); background: var(--color-green-bright); border-color: var(--color-green-bright); }
+}
+
+.checkmark-draw svg path {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: drawCheck 0.35s cubic-bezier(0.65, 0, 0.35, 1) 0.15s forwards;
+}
+@keyframes drawCheck { to { stroke-dashoffset: 0; } }
+
+.task-completing {
+  animation: taskSlideOut 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.45s forwards;
+}
+@keyframes taskSlideOut {
+  0% { opacity: 1; transform: translateX(0); max-height: 60px; }
+  50% { opacity: 0.3; transform: translateX(12px); }
+  100% { opacity: 0; transform: translateX(24px); max-height: 0; padding-top: 0; padding-bottom: 0; margin: 0; overflow: hidden; }
+}
+
+/* Completion particles — position set via inline style transform;
+   animation fades them from full opacity to invisible */
+.completion-particle {
+  position: absolute;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: particleBurst 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+@keyframes particleBurst {
+  0% { opacity: 1; scale: 1.2; }
+  100% { opacity: 0; scale: 0.4; }
+}
+
+/* ═══ Focus ring ═══ */
+input:focus, textarea:focus, select:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-oxblood) 14%, transparent);
+  transition: box-shadow 0.15s ease;
+}
+input:focus-visible, textarea:focus-visible, select:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-oxblood) 18%, transparent);
+}
+/* Opt-out for fields that live inside their own bordered container (e.g. the
+   optical chat input) — the global ring reads as a second box around them. */
+.no-focus-ring:focus, .no-focus-ring:focus-visible {
+  box-shadow: none !important;
+}
+button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-oxblood) 35%, transparent);
+  outline-offset: 1px;
+}
+
+/* ═══ Scrollbar ═══ */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(var(--rgb-ink), 0.12); border-radius: 3px; border: 1px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: rgba(var(--rgb-ink), 0.24); background-clip: content-box; }
+
+/* ═══ Spin animation ═══ */
+@keyframes spin { to { transform: rotate(360deg); } }
+.animate-spin-smooth { animation: iconElasticSpin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+
+/* ═══ Skeleton shimmer ═══ */
+.skeleton {
+  background: linear-gradient(90deg, rgba(0,0,0,0.04) 25%, rgba(0,0,0,0.07) 50%, rgba(0,0,0,0.04) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+  border-radius: 8px;
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ═══ Progress bar ═══ */
+.progress-track { background: rgba(0,0,0,0.06); border-radius: 4px; overflow: hidden; }
+.progress-fill { transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 4px; }
+
+/* ═══ URL bar loading sweep ═══ */
+@keyframes urlbarSweep {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(385%); }
+}
+.animate-urlbar-sweep { animation: urlbarSweep 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+
+/* ═══ Workbook markdown styles ═══ */
+/* Defensive — email HTML arrives with inline widths, fixed-width tables, and
+   `white-space: nowrap` attributes that force content wider than the pane.
+   Force every element to cap at parent width and honor word-wrapping.
+   Critical: keep `word-break: break-word` (breaks only when needed, at word
+   boundaries) — NOT `break-all` / `anywhere`, which mangles nested reply
+   chains into single-character columns. */
+.workbook-content {
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+.workbook-content * {
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box;
+}
+.workbook-content *:not(pre):not(code) {
+  white-space: normal !important;
+  overflow-wrap: break-word !important;
+}
+/* Preserve white-space in pre/code blocks */
+.workbook-content pre, .workbook-content code {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+/* Override inline width attributes */
+.workbook-content table[width] { width: 100% !important; }
+.workbook-content td[width], .workbook-content th[width] { width: auto !important; }
+.workbook-content h1 { font-size: 16px; font-weight: 700; color: var(--color-text-1); margin: 20px 0 8px; letter-spacing: -0.01em; }
+.workbook-content h2 { font-size: 13px; font-weight: 600; color: var(--color-text-1); margin: 16px 0 6px; letter-spacing: -0.01em; }
+.workbook-content h3 { font-size: 12px; font-weight: 600; color: var(--color-text-1); margin: 12px 0 4px; }
+.workbook-content p { margin: 6px 0; line-height: 1.65; color: var(--color-text-2); }
+.workbook-content strong { color: var(--color-text-1); }
+.workbook-content code {
+  background: rgba(0,0,0,0.05);
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-family: 'SF Mono', Menlo, Monaco, 'Cascadia Code', 'Courier New', monospace;
+}
+.workbook-content pre {
+  background: rgba(0,0,0,0.03);
+  border: 1px solid rgba(0,0,0,0.07);
+  border-radius: 10px;
+  padding: 14px 18px;
+  overflow-x: auto;
+  margin: 10px 0;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.workbook-content pre code { background: none; padding: 0; }
+.workbook-content ol, .workbook-content ul { padding-left: 20px; margin: 6px 0; }
+.workbook-content li { margin: 4px 0; line-height: 1.6; color: var(--color-text-2); }
+/* Blockquote nesting cap — every reply in a long chain adds its own padding.
+   Override inline Gmail/Outlook styles (margin: 0 0 0 .8ex; padding-left: 1ex)
+   with minimal indent, then DECAY indent per nesting level so 10+ levels deep
+   doesn't push content off the right edge of the pane. */
+.workbook-content blockquote {
+  margin: 6px 0 6px 0 !important;
+  padding: 2px 0 2px 10px !important;
+  border-left: 2px solid rgba(122,31,43,0.25) !important;
+  color: var(--color-text-3);
+}
+.workbook-content blockquote blockquote { padding-left: 8px !important; }
+.workbook-content blockquote blockquote blockquote { padding-left: 6px !important; }
+.workbook-content blockquote blockquote blockquote blockquote { padding-left: 4px !important; border-left-width: 1px !important; }
+.workbook-content blockquote blockquote blockquote blockquote blockquote,
+.workbook-content blockquote blockquote blockquote blockquote blockquote blockquote,
+.workbook-content blockquote blockquote blockquote blockquote blockquote blockquote blockquote {
+  padding-left: 3px !important;
+  border-left-width: 1px !important;
+}
+/* Strip any inline left margin/padding on divs directly inside blockquotes
+   (Gmail wraps each line as a <div> with its own margin sometimes) */
+.workbook-content blockquote > div { margin-left: 0 !important; padding-left: 0 !important; }
+.workbook-content hr { border: none; border-top: 1px solid rgba(0,0,0,0.07); margin: 20px 0; }
+.workbook-content a { color: var(--color-blue-1); text-decoration: none; }
+.workbook-content a:hover { text-decoration: underline; text-underline-offset: 2px; }
+.workbook-content table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 12px; }
+.workbook-content th, .workbook-content td { border: 1px solid rgba(0,0,0,0.07); padding: 8px 12px; text-align: left; }
+.workbook-content th { background: rgba(0,0,0,0.03); font-weight: 600; color: var(--color-text-1); }
+.workbook-content img { max-width: 100%; border-radius: 12px; margin: 8px 0; cursor: pointer; transition: opacity 0.15s; }
+.workbook-content img:hover { opacity: 0.85; }
+
+/* ═══ Chat animations ═══ */
+.chat-msg { animation: chatIn 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+@keyframes chatIn {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══ Thinking indicator (chat "working" line) ═══
+   The held breath between the user's message and the reply. One calm oxblood
+   light-sweep reads across the working word, the glyph breathes, and each new
+   word fades up in place — no hard pops, no layout jump. Quiet everywhere
+   except the single sweep. */
+.thinking-indicator { animation: chatIn 0.28s cubic-bezier(0.4, 0, 0.2, 1); }
+
+.thinking-glyph {
+  color: var(--color-oxblood);
+  animation: thinkingBreathe 2.6s ease-in-out infinite;
+}
+@keyframes thinkingBreathe {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 1; }
+}
+
+/* Muted word with a narrow oxblood highlight that sweeps across it. The band is
+   clipped to the glyphs (background-clip: text); the gradient's ends stay muted
+   so the loop and the per-word remount both reset invisibly. */
+.thinking-word {
+  background: linear-gradient(
+    100deg,
+    var(--color-text-3) 0%,
+    var(--color-text-3) 42%,
+    color-mix(in srgb, var(--color-oxblood) 80%, var(--color-text-3)) 50%,
+    var(--color-text-3) 58%,
+    var(--color-text-3) 100%
+  );
+  background-size: 280% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  /* keyed remount replays both: a one-shot fade-up on each new word, and the
+     ambient sweep. */
+  animation:
+    thinkingWordIn 0.36s cubic-bezier(0.4, 0, 0.2, 1),
+    thinkingShimmer 2.4s ease-in-out infinite;
+}
+@keyframes thinkingWordIn {
+  0%   { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes thinkingShimmer {
+  0%   { background-position: 150% 0; }
+  100% { background-position: -150% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thinking-indicator { animation: none; }
+  .thinking-glyph { animation: none; opacity: 0.85; }
+  .thinking-word {
+    animation: none;
+    background: none;
+    -webkit-text-fill-color: var(--color-text-3);
+    color: var(--color-text-3);
+  }
+}
+
+
+/* ═══ View transition ═══ */
+.view-enter {
+  animation: viewFadeIn 0.25s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+@keyframes viewFadeIn {
+  0% { opacity: 0; transform: translateY(3px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══ Complete button animation ═══ */
+.complete-btn-done {
+  animation: completePop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 0 20px rgba(26,171,70,0.3), 0 0 60px rgba(26,171,70,0.1);
+}
+@keyframes completePop {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.15); }
+  50% { transform: scale(0.95); }
+  70% { transform: scale(1.08); }
+  100% { transform: scale(1.05); }
+}
+
+.complete-check-draw svg path,
+.complete-check-draw path {
+  stroke: #fff;
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: drawCheckBold 0.4s cubic-bezier(0.65, 0, 0.35, 1) 0.1s forwards;
+}
+@keyframes drawCheckBold { to { stroke-dashoffset: 0; } }
+
+.complete-ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: 12px;
+  border: 2px solid var(--color-green-bright);
+  animation: completeRingExpand 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none;
+}
+@keyframes completeRingExpand {
+  0% { inset: 0; opacity: 1; border-width: 2px; }
+  100% { inset: -12px; opacity: 0; border-width: 1px; }
+}
+
+/* ═══ Animation aliases (ported from HTMX base.html) ═══ */
+
+/* syncCascadeGreen — alias for cascadeGreen (sync complete flash) */
+@keyframes syncCascadeGreen {
+  0% { background: rgba(26,171,70,0.12); box-shadow: inset 0 0 30px rgba(26,171,70,0.08), 0 0 8px rgba(26,171,70,0.06); transform: translateX(0); }
+  15% { background: rgba(26,171,70,0.16); transform: translateX(4px) scale(1.005); }
+  40% { transform: translateX(-1px) scale(0.998); }
+  100% { background: transparent; box-shadow: none; transform: translateX(0) scale(1); border-left-color: transparent; }
+}
+
+/* syncCascadePurple — alias for cascadePurple (organize complete flash) */
+@keyframes syncCascadePurple {
+  0% { background: rgba(155,89,182,0.1); box-shadow: inset 0 0 25px rgba(155,89,182,0.08), 0 0 8px rgba(155,89,182,0.06); transform: scale(1); }
+  20% { background: rgba(155,89,182,0.16); transform: scale(1.012) translateX(3px); }
+  45% { transform: scale(0.995) translateX(-1px); }
+  100% { background: transparent; box-shadow: none; transform: scale(1) translateX(0); border-left-color: transparent; }
+}
+
+/* borderWipeGreen — left border wipe after sync */
+@keyframes borderWipeGreen {
+  0% { border-left-color: rgba(26,171,70,0.8); border-left-width: 3px; }
+  50% { border-left-color: rgba(26,171,70,0.4); border-left-width: 2px; }
+  100% { border-left-color: transparent; border-left-width: 0px; }
+}
+
+/* borderWipePurple — left border wipe after organize */
+@keyframes borderWipePurple {
+  0% { border-left-color: rgba(155,89,182,0.8); border-left-width: 3px; }
+  50% { border-left-color: rgba(155,89,182,0.4); border-left-width: 2px; }
+  100% { border-left-color: transparent; border-left-width: 0px; }
+}
+
+/* scanLine — green gradient sweep during sync (alias for scanSweep) */
+@keyframes scanLine {
+  0% { left: -30%; }
+  100% { left: 100%; }
+}
+
+/* shimmerLoop — purple wave during organize */
+@keyframes shimmerLoop {
+  0% { left: -40%; }
+  100% { left: 100%; }
+}
+
+/* ═══ Modal entry/exit animations ═══ */
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.97) translateY(4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-enter { animation: modalIn 0.2s cubic-bezier(0.25, 0.1, 0.25, 1); }
+
+@keyframes modalOut {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to   { opacity: 0; transform: scale(0.97) translateY(4px); }
+}
+.modal-exit { animation: modalOut 0.18s ease-in forwards; }
+
+@keyframes backdropOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+.backdrop-exit { animation: backdropOut 0.18s ease-in forwards; }
+
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.backdrop-enter { animation: backdropIn 0.15s ease; }
+
+@keyframes composeDrawerIn {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.compose-drawer-enter { animation: composeDrawerIn 0.22s cubic-bezier(0.25, 0.1, 0.25, 1); }
+
+@keyframes composeDrawerOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(24px); }
+}
+.compose-drawer-exit { animation: composeDrawerOut 0.18s ease-in forwards; }
+
+/* ═══ Voice orb keyframes ═══ */
+@keyframes voice-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+@keyframes voice-spin { to { transform: rotate(360deg); } }
+@keyframes voice-morph { 0%, 100% { border-radius: 50%; transform: scale(1); } 50% { border-radius: 4px; transform: scale(0.82); } }
+@keyframes voice-ring { 0%, 100% { opacity: 0.3; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.1); } }
+@keyframes voice-glow { 0%, 100% { box-shadow: 0 0 8px rgba(123,47,160,0.3); } 50% { box-shadow: 0 0 20px rgba(123,47,160,0.5); } }
+@media (prefers-reduced-motion: reduce) {
+  @keyframes voice-glow { 0%, 100% { box-shadow: 0 0 8px rgba(123,47,160,0.3); } }
+  @keyframes voice-ring { 0%, 100% { opacity: 0.3; transform: scale(1); } }
+  @keyframes voice-breathe { 0%, 100% { transform: scale(1); } }
+}
+
+/* ═══ Task drop zone drag-over ═══ */
+.task-drop-zone.drag-over { border-color: rgba(191,90,242,0.3) !important; }
+
+/* ═══ Utility class aliases ═══ */
+
+/* .chat-msg-enter — applies chatIn animation */
+.chat-msg-enter {
+  animation: chatIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ═══ Empty state icon container ═══ */
+.empty-state-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: rgba(0,0,0,0.03);
+  border: 1px solid rgba(0,0,0,0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+.empty-state-icon svg { color: rgba(0,0,0,0.12); }
+
+/* ═══ Scrollbar utilities ═══ */
+.scrollbar-hide { scrollbar-width: none; -ms-overflow-style: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
+/* ═══ xterm ═══ */
+.xterm { height: 100%; overscroll-behavior: none; }
+.xterm .xterm-viewport {
+  background-color: transparent !important;
+  overscroll-behavior: none;
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* IE/Edge */
+}
+.xterm .xterm-viewport::-webkit-scrollbar {
+  width: 0 !important;            /* Chrome/Safari/Electron */
+  height: 0 !important;
+}
+
+/* ═══ Optical view prose (assistant messages) ═══ */
+/* Body sits a step muted; bold and headings step up to full ink so message
+   structure reads at a glance instead of as one undifferentiated wall. */
+.optical-prose { color: var(--color-text-2); }
+.optical-prose strong { color: var(--color-text-1); font-weight: 600; }
+.optical-prose h1, .optical-prose h2, .optical-prose h3 { color: var(--color-text-1); }
+.optical-prose li { margin: 5px 0; padding-left: 2px; }
+.optical-prose li::marker { color: var(--color-text-3); }
+.optical-prose ul { margin: 6px 0 6px 4px; }
+.optical-prose code { color: var(--color-text-1); }

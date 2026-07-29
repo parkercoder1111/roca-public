@@ -1,0 +1,42 @@
+appId: com.roca.app
+productName: ROCA
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist/**/*
+  - build/icon.png
+  - node_modules/**/*
+  - package.json
+mac:
+  icon: build/icon.icns
+  category: public.app-category.productivity
+  target: dir
+  identity: "ROCA Dev"
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  extendInfo:
+    # Echo dictation sidecar records the mic. If macOS attributes the child
+    # process's mic request to ROCA (responsible process), the prompt needs
+    # this usage string or it's silently denied.
+    NSMicrophoneUsageDescription: >-
+      ROCA uses the microphone for fn-to-talk dictation (Echo), transcribing
+      your speech and typing it at your cursor.
+    # Register ROCA as an http/https URL handler so it shows up in the
+    # macOS Default web browser picker. Combined with app.on('open-url')
+    # in main.ts, every URL clicked from any other app (Mail, Slack
+    # desktop, Notes, etc.) lands as a new top-level tab in ROCA.
+    CFBundleURLTypes:
+      - CFBundleURLName: Web site URL
+        CFBundleURLSchemes:
+          - http
+          - https
+        LSHandlerRank: Default
+extraResources:
+  - from: dist/mobile/
+    to: mobile/
+  - from: roca/
+    to: roca/
+asar: false
